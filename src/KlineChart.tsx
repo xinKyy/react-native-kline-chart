@@ -5,10 +5,6 @@ import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import type { KlineChartProps } from './types';
 import { useChartData } from './hooks/useChartData';
 import { useChartGestures } from './hooks/useChartGestures';
-import { drawCandles } from './drawing/drawCandles';
-import { drawGrid } from './drawing/drawGrid';
-import { drawMALine } from './drawing/drawMA';
-import { drawCrosshair } from './drawing/drawCrosshair';
 import {
   DEFAULT_CANDLE_WIDTH,
   DEFAULT_CANDLE_SPACING,
@@ -25,6 +21,7 @@ import {
   Y_AXIS_WIDTH,
   PRICE_PADDING_RATIO,
   WICK_WIDTH,
+  GRID_ROWS,
 } from './utils/constants';
 
 function clamp(val: number, min: number, max: number): number {
@@ -54,7 +51,9 @@ export function KlineChart({
 }: KlineChartProps) {
   const chartWidth = width - Y_AXIS_WIDTH;
 
-  const scrollOffset = useSharedValue(Math.max(0, data.length - Math.floor(chartWidth / (initialCandleWidth + candleSpacing))));
+  const scrollOffset = useSharedValue(
+    Math.max(0, data.length - Math.floor(chartWidth / (initialCandleWidth + candleSpacing))),
+  );
   const candleWidthSV = useSharedValue(initialCandleWidth);
   const crosshairX = useSharedValue(0);
   const crosshairVisible = useSharedValue(false);
@@ -139,15 +138,20 @@ export function KlineChart({
   const recorder = Skia.PictureRecorder();
 
   const picture = useDerivedValue(() => {
+    'worklet';
     const canvas = recorder.beginRecording(
       Skia.XYWHRect(0, 0, width, height),
     );
 
+    // --- helpers inlined for worklet serialization ---
+
+    const p2y = (price: number, h: number, minP: number, range: number) => {
+      if (range === 0) return h / 2;
+      return h - ((price - minP) / range) * h;
+    };
+
     // Background
-    canvas.drawRect(
-      { x: 0, y: 0, width, height },
-      paints.bgPaint,
-    );
+    canvas.drawRect({ x: 0, y: 0, width, height }, paints.bgPaint);
 
     const allData = dataShared.value;
     const cw = candleWidthSV.value;
@@ -160,7 +164,7 @@ export function KlineChart({
 
     const visibleData = allData.slice(startIdx, endIdx);
 
-    // Compute price range for visible data
+    // Price range
     let minPrice = Infinity;
     let maxPrice = -Infinity;
     for (let i = 0; i < visibleData.length; i++) {
@@ -168,97 +172,126 @@ export function KlineChart({
       if (c.low < minPrice) minPrice = c.low;
       if (c.high > maxPrice) maxPrice = c.high;
     }
-
     if (minPrice === Infinity) {
       minPrice = 0;
       maxPrice = 100;
     }
-
-    const padding = (maxPrice - minPrice) * PRICE_PADDING_RATIO;
-    minPrice -= padding;
-    maxPrice += padding;
+    const pad = (maxPrice - minPrice) * PRICE_PADDING_RATIO;
+    minPrice -= pad;
+    maxPrice += pad;
     const priceRange = maxPrice - minPrice;
 
-    // Grid
-    drawGrid(
-      canvas,
-      chartWidth,
-      height,
-      minPrice,
-      maxPrice,
-      paints.gridPaint,
-      paints.textPaint,
-      font,
-      Y_AXIS_WIDTH,
-    );
+    // --- Grid ---
+    const totalW = chartWidth + Y_AXIS_WIDTH;
+    const gridRows = GRID_ROWS;
+    for (let i = 0; i <= gridRows; i++) {
+      const gy = (height / gridRows) * i;
+      canvas.drawLine(0, gy, totalW, gy, paints.gridPaint);
+      if (font) {
+        const gp = maxPrice - ((maxPrice - minPrice) / gridRows) * i;
+        let label: string;
+        if (gp >= 10000) label = gp.toFixed(0);
+        else if (gp >= 1000) label = gp.toFixed(1);
+        else if (gp >= 1) label = gp.toFixed(2);
+        else label = gp.toFixed(4);
+        canvas.drawText(label, chartWidth + 4, gy + 4, paints.textPaint, font);
+      }
+    }
 
-    // Candles
+    // --- Candles ---
     canvas.save();
     canvas.clipRect(Skia.XYWHRect(0, 0, chartWidth, height), ClipOp.Intersect, false);
 
-    drawCandles(
-      canvas,
-      visibleData,
-      startIdx,
-      cw,
-      candleSpacing,
-      height,
-      minPrice,
-      priceRange,
-      paints.bullPaint,
-      paints.bearPaint,
-      paints.wickBullPaint,
-      paints.wickBearPaint,
-    );
+    const halfCandle = cw / 2;
+    const halfWick = WICK_WIDTH / 2;
 
-    // MA lines
+    for (let i = 0; i < visibleData.length; i++) {
+      const candle = visibleData[i]!;
+      const cx = i * step;
+      const centerX = cx + halfCandle;
+
+      const isBull = candle.close >= candle.open;
+      const cPaint = isBull ? paints.bullPaint : paints.bearPaint;
+      const wPaint = isBull ? paints.wickBullPaint : paints.wickBearPaint;
+
+      const openY = p2y(candle.open, height, minPrice, priceRange);
+      const closeY = p2y(candle.close, height, minPrice, priceRange);
+      const highY = p2y(candle.high, height, minPrice, priceRange);
+      const lowY = p2y(candle.low, height, minPrice, priceRange);
+
+      const bodyTop = Math.min(openY, closeY);
+      const bodyH = Math.max(Math.abs(closeY - openY), 1);
+
+      canvas.drawRect(
+        { x: centerX - halfWick, y: highY, width: WICK_WIDTH, height: lowY - highY },
+        wPaint,
+      );
+      canvas.drawRect(
+        { x: cx, y: bodyTop, width: cw, height: bodyH },
+        cPaint,
+      );
+    }
+
+    // --- MA lines ---
     if (showMA) {
       const allMA = maShared.value;
       for (let m = 0; m < allMA.length; m++) {
         const maData = allMA[m];
         const maPaint = paints.maPaints[m];
-        if (maData && maPaint) {
-          drawMALine(
-            canvas,
-            maData,
-            startIdx,
-            visibleCount + 2,
-            cw,
-            candleSpacing,
-            height,
-            minPrice,
-            priceRange,
-            maPaint,
-          );
+        if (!maData || !maPaint) continue;
+
+        const path = Skia.Path.Make();
+        let started = false;
+        const maEnd = Math.min(startIdx + visibleCount + 2, maData.length);
+
+        for (let i = startIdx; i < maEnd; i++) {
+          const val = maData[i];
+          if (val === null || val === undefined) {
+            started = false;
+            continue;
+          }
+          const lx = (i - startIdx) * step + halfCandle;
+          const ly = p2y(val, height, minPrice, priceRange);
+          if (!started) {
+            path.moveTo(lx, ly);
+            started = true;
+          } else {
+            path.lineTo(lx, ly);
+          }
         }
+        canvas.drawPath(path, maPaint);
       }
     }
 
     canvas.restore();
 
-    // Crosshair
+    // --- Crosshair ---
     if (crosshairVisible.value && showCrosshair) {
-      const cx = crosshairX.value;
-      const candleIdx = Math.round(cx / step);
+      const chx = crosshairX.value;
+      const candleIdx = Math.round(chx / step);
       const dataIdx = startIdx + candleIdx;
       if (dataIdx >= 0 && dataIdx < allData.length) {
         const candle = allData[dataIdx]!;
         const snapX = candleIdx * step + cw / 2;
+        const closeY = p2y(candle.close, height, minPrice, priceRange);
 
-        drawCrosshair(
-          canvas,
-          candle,
-          snapX,
-          chartWidth,
-          height,
-          minPrice,
-          priceRange,
-          paints.crosshairPaint,
-          paints.crosshairBgPaint,
-          paints.crosshairLabelPaint,
-          font,
-          Y_AXIS_WIDTH,
-        );
+        canvas.drawLine(snapX, 0, snapX, height, paints.crosshairPaint);
+        canvas.drawLine(0, closeY, totalW, closeY, paints.crosshairPaint);
+
+        if (font) {
+          const priceText = candle.close.toFixed(2);
+          const tw = font.measureText(priceText).width;
+          const lx = chartWidth + 2;
+          const lPad = 4;
+          canvas.drawRect(
+            { x: lx, y: closeY - 10 - lPad, width: tw + lPad * 2, height: 14 + lPad * 2 },
+            paints.crosshairBgPaint,
+          );
+          canvas.drawText(priceText, lx + lPad, closeY + 2, paints.crosshairLabelPaint, font);
+
+          const info = `O:${candle.open.toFixed(2)}  H:${candle.high.toFixed(2)}  L:${candle.low.toFixed(2)}  C:${candle.close.toFixed(2)}`;
+          canvas.drawText(info, 8, 14, paints.crosshairLabelPaint, font);
+        }
       }
     }
 
