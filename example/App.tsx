@@ -7,7 +7,7 @@ import { generateMockData } from './src/mockData';
 
 export default function App() {
   const { width } = useWindowDimensions();
-  const chartHeight = 400;
+  const chartHeight = 450;
 
   const data = useMemo(() => generateMockData(2000), []);
   const [activeCandle, setActiveCandle] = useState<Candle | null>(null);
@@ -20,15 +20,17 @@ export default function App() {
     <GestureHandlerRootView style={styles.root}>
       <StatusBar barStyle="light-content" />
       <View style={styles.container}>
-        <Text style={styles.title}>K-Line Chart</Text>
-        <Text style={styles.subtitle}>
-          {data.length} candles | Pinch to zoom, Pan to scroll, Long-press for crosshair
-        </Text>
+        <View style={styles.header}>
+          <Text style={styles.pair}>BTC/USDT</Text>
+          <Text style={styles.subtitle}>
+            {data.length} candles
+          </Text>
+        </View>
 
         {activeCandle ? (
           <View style={styles.info}>
             <Text style={styles.infoText}>
-              O: {activeCandle.open} H: {activeCandle.high} L: {activeCandle.low} C: {activeCandle.close}
+              O: {activeCandle.open}  H: {activeCandle.high}  L: {activeCandle.low}  C: {activeCandle.close}
             </Text>
           </View>
         ) : null}
@@ -37,8 +39,6 @@ export default function App() {
           data={data}
           width={width}
           height={chartHeight}
-          candleWidth={6}
-          candleSpacing={2}
           showMA
           maPeriods={[5, 10]}
           showCrosshair
@@ -52,32 +52,34 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#1B1B1F',
+    backgroundColor: '#0B0E11',
   },
   container: {
     flex: 1,
-    paddingTop: 60,
+    paddingTop: 56,
   },
-  title: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
+  header: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
     paddingHorizontal: 16,
-    marginBottom: 4,
+    marginBottom: 12,
+    gap: 8,
+  },
+  pair: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
   },
   subtitle: {
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.35)',
     fontSize: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
   },
   info: {
     paddingHorizontal: 16,
-    paddingVertical: 4,
+    paddingBottom: 8,
   },
   infoText: {
-    color: '#FFD54F',
-    fontSize: 12,
-    fontFamily: 'monospace',
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 11,
   },
 });
