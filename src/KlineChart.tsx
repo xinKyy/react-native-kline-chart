@@ -243,11 +243,18 @@ export function KlineChart({
     maxPrice += pricePad;
     const priceRange = maxPrice - minPrice;
 
-    // ========== Grid (horizontal dashed) ==========
+    // ========== Grid ==========
     const gridRows = GRID_ROWS;
     for (let i = 1; i < gridRows; i++) {
       const gy = (chartHeight / gridRows) * i;
       canvas.drawLine(0, gy, chartWidth, gy, paints.gridPaint);
+    }
+    const gridInterval = X_AXIS_LABEL_INTERVAL;
+    for (let i = gridInterval; i < visibleCount + gridInterval; i += gridInterval) {
+      const gx = i * step;
+      if (gx > 0 && gx < chartWidth) {
+        canvas.drawLine(gx, 0, gx, chartHeight, paints.gridPaint);
+      }
     }
 
     // ========== Candles ==========
