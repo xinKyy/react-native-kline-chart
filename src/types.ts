@@ -24,5 +24,6 @@ export type KlineChartProps = {
   gridColor?: string;
   textColor?: string;
   crosshairColor?: string;
+  rightPaddingCandles?: number;
   onCrosshairChange?: (candle: Candle | null) => void;
 };

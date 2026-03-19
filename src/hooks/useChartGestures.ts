@@ -13,6 +13,7 @@ type GestureParams = {
   candleSpacing: number;
   minCandleWidth: number;
   maxCandleWidth: number;
+  rightPaddingCandles: number;
   onCrosshairChange?: (candle: Candle | null) => void;
 };
 
@@ -32,6 +33,7 @@ export function useChartGestures(params: GestureParams) {
     candleSpacing,
     minCandleWidth,
     maxCandleWidth,
+    rightPaddingCandles,
     onCrosshairChange,
   } = params;
 
@@ -45,7 +47,7 @@ export function useChartGestures(params: GestureParams) {
       const step = candleWidth.value + candleSpacing;
       const delta = -e.changeX / step;
       const visibleCount = Math.floor(chartWidth / step);
-      const maxOffset = Math.max(0, dataLength - visibleCount);
+      const maxOffset = Math.max(0, dataLength - visibleCount + rightPaddingCandles);
       scrollOffset.value = clamp(scrollOffset.value + delta, 0, maxOffset);
     })
     .minDistance(1);
@@ -69,7 +71,7 @@ export function useChartGestures(params: GestureParams) {
       const newStep = newWidth + candleSpacing;
       const newVisibleCount = Math.floor(chartWidth / newStep);
       const newOffset = centerIndex - newVisibleCount / 2;
-      const maxOffset = Math.max(0, dataLength - newVisibleCount);
+      const maxOffset = Math.max(0, dataLength - newVisibleCount + rightPaddingCandles);
       scrollOffset.value = clamp(newOffset, 0, maxOffset);
     });
 

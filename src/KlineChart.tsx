@@ -24,6 +24,7 @@ import {
   WICK_WIDTH,
   GRID_ROWS,
   X_AXIS_LABEL_INTERVAL,
+  RIGHT_PADDING_CANDLES,
 } from './utils/constants';
 
 function clamp(val: number, min: number, max: number): number {
@@ -49,13 +50,14 @@ export function KlineChart({
   gridColor = GRID_COLOR,
   textColor = TEXT_COLOR,
   crosshairColor = CROSSHAIR_COLOR,
+  rightPaddingCandles = RIGHT_PADDING_CANDLES,
   onCrosshairChange,
 }: KlineChartProps) {
   const chartWidth = width;
   const chartHeight = height - X_AXIS_HEIGHT;
 
   const scrollOffset = useSharedValue(
-    Math.max(0, data.length - Math.floor(chartWidth / (initialCandleWidth + candleSpacing))),
+    Math.max(0, data.length - Math.floor(chartWidth / (initialCandleWidth + candleSpacing)) + rightPaddingCandles),
   );
   const candleWidthSV = useSharedValue(initialCandleWidth);
   const crosshairX = useSharedValue(0);
@@ -178,6 +180,7 @@ export function KlineChart({
     candleSpacing,
     minCandleWidth,
     maxCandleWidth,
+    rightPaddingCandles,
     onCrosshairChange,
   });
 
@@ -217,7 +220,7 @@ export function KlineChart({
     const cw = candleWidthSV.value;
     const step = cw + candleSpacing;
     const visibleCount = Math.floor(chartWidth / step);
-    const maxOff = Math.max(0, allData.length - visibleCount);
+    const maxOff = Math.max(0, allData.length - visibleCount + rightPaddingCandles);
     const offset = clamp(scrollOffset.value, 0, maxOff);
     const startIdx = Math.floor(offset);
     const endIdx = Math.min(startIdx + visibleCount + 2, allData.length);
