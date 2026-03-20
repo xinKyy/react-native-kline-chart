@@ -92,8 +92,8 @@ export default async function ExamplesPage({
   const dict = await getDictionary(locale as Locale);
 
   const screenshots = [
-    { src: '/examples/screenshot1.png', alt: 'Screenshot 1' },
-    { src: '/examples/screenshot2.png', alt: 'Screenshot 2' },
+    { src: '/examples/1.png', alt: 'Screenshot 1' },
+    { src: '/examples/2.png', alt: 'Screenshot 2' },
     { src: '/examples/demo.gif', alt: 'Demo GIF' },
   ];
 
@@ -127,7 +127,7 @@ export default async function ExamplesPage({
             {screenshots.map((img, i) => (
               <div
                 key={i}
-                className="relative aspect-[9/16] rounded-xl border border-border overflow-hidden bg-bg-secondary"
+                className="relative aspect-[1179/2556] rounded-xl border border-border overflow-hidden bg-bg-secondary"
               >
                 <Image
                   src={img.src}
