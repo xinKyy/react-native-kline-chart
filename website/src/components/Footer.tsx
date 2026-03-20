@@ -9,14 +9,14 @@ export function Footer({ locale, dict }: { locale: Locale; dict: Dictionary }) {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           <div className="md:col-span-2">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10 border border-accent/20">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-accent">
-                  <rect x="3" y="8" width="4" height="8" rx="1" fill="currentColor" />
-                  <line x1="5" y1="5" x2="5" y2="19" stroke="currentColor" strokeWidth="1.5" />
-                  <rect x="10" y="6" width="4" height="12" rx="1" fill="currentColor" opacity="0.7" />
-                  <line x1="12" y1="3" x2="12" y2="21" stroke="currentColor" strokeWidth="1.5" opacity="0.7" />
-                  <rect x="17" y="9" width="4" height="6" rx="1" fill="currentColor" opacity="0.5" />
-                  <line x1="19" y1="6" x2="19" y2="18" stroke="currentColor" strokeWidth="1.5" opacity="0.5" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-bg-card border border-border overflow-hidden">
+                <svg width="20" height="20" viewBox="0 0 512 512" fill="none">
+                  <line x1="138" y1="100" x2="138" y2="412" stroke="#F6465D" strokeWidth="28" strokeLinecap="round" />
+                  <rect x="108" y="160" width="60" height="180" rx="8" fill="#F6465D" />
+                  <line x1="256" y1="70" x2="256" y2="380" stroke="#2DC08E" strokeWidth="28" strokeLinecap="round" />
+                  <rect x="226" y="130" width="60" height="200" rx="8" fill="#2DC08E" />
+                  <line x1="374" y1="120" x2="374" y2="400" stroke="#2DC08E" strokeWidth="28" strokeLinecap="round" />
+                  <rect x="344" y="200" width="60" height="120" rx="8" fill="#2DC08E" />
                 </svg>
               </div>
               <span className="font-semibold">React Native KLine Chart</span>
