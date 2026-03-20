@@ -513,23 +513,28 @@ export function KlineChart({
         ];
 
         const rowH = 20;
-        const panelPadX = 12;
+        const panelPadX = 8;
         const panelPadY = 8;
+        const panelColGap = 6;
         const panelH = labels.length * rowH + panelPadY * 2;
 
-        const labelColW = 56;
+        let maxLabelW = 0;
+        for (let li = 0; li < labels.length; li++) {
+          const lw = fontPanel.measureText(labels[li]!).width;
+          if (lw > maxLabelW) maxLabelW = lw;
+        }
         let maxValW = 0;
         for (let vi2 = 0; vi2 < values.length; vi2++) {
           const vw = fontPanel.measureText(values[vi2]!).width;
           if (vw > maxValW) maxValW = vw;
         }
-        const panelW = labelColW + maxValW + panelPadX * 2 + 12;
+        const panelW = maxLabelW + panelColGap + maxValW + panelPadX * 2;
 
-        const panelOnRight = snapX < chartWidth / 2;
-        const panelX = panelOnRight
-          ? Math.min(snapX + 20, chartWidth - panelW - 4)
-          : Math.max(snapX - panelW - 20, 4);
-        const panelY = Math.max(4, Math.min(closeY - panelH / 2, chartHeight - panelH - 4));
+        // Tooltip pinned to top corners: left/center crosshair → top-right; right half → top-left.
+        const cornerPad = 4;
+        const panelOnTopLeft = snapX > chartWidth / 2;
+        const panelX = panelOnTopLeft ? cornerPad : chartWidth - panelW - cornerPad;
+        const panelY = cornerPad;
 
         canvas.drawRect(
           Skia.XYWHRect(panelX, panelY, panelW, panelH),
