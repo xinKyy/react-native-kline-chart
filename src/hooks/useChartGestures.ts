@@ -1,6 +1,6 @@
 import { Gesture } from 'react-native-gesture-handler';
 import type { SharedValue } from 'react-native-reanimated';
-import { runOnJS, useSharedValue } from 'react-native-reanimated';
+import { cancelAnimation, runOnJS, useSharedValue, withDecay } from 'react-native-reanimated';
 import type { Candle } from '../types';
 
 type GestureParams = {
@@ -61,6 +61,7 @@ export function useChartGestures(params: GestureParams) {
   const panGesture = Gesture.Pan()
     .onStart(() => {
       'worklet';
+      cancelAnimation(scrollOffset);
       if (!crosshairVisible.value) {
         isDragging.value = true;
       }
@@ -77,21 +78,31 @@ export function useChartGestures(params: GestureParams) {
       const maxOffset = Math.max(0, dataLength - visibleCount + rightPaddingCandles);
       scrollOffset.value = clamp(scrollOffset.value + delta, 0, maxOffset);
     })
-    .onEnd(() => {
+    .onEnd((e) => {
       'worklet';
-      isDragging.value = false;
       if (crosshairVisible.value) {
         crosshairVisible.value = false;
         if (onCrosshairChange) {
           runOnJS(onCrosshairChange)(null);
         }
+        isDragging.value = false;
+        return;
       }
+      const step = candleWidth.value + candleSpacing;
+      const visibleCount = Math.floor(chartWidth / step);
+      const maxOffset = Math.max(0, dataLength - visibleCount + rightPaddingCandles);
+      const velocity = -e.velocityX / step;
+      scrollOffset.value = withDecay(
+        { velocity, deceleration: 0.997, clamp: [0, maxOffset] },
+        () => { isDragging.value = false; },
+      );
     })
     .minDistance(1);
 
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
       'worklet';
+      cancelAnimation(scrollOffset);
       isDragging.value = true;
     })
     .onChange((e) => {
