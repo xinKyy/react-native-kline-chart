@@ -17,10 +17,14 @@
 <br/>
 
 <p>
-  <img src="https://react-native-kline-chart.vercel.app/screenshots/screenshot1.png" width="280" alt="K-line chart" />
+  <img src="./assets/1.png" width="280" alt="K-line chart" />
   &nbsp;&nbsp;&nbsp;
-  <img src="https://react-native-kline-chart.vercel.app/screenshots/screenshot2.png" width="280" alt="Crosshair with info panel" />
+  <img src="./assets/2.png" width="280" alt="Crosshair with info panel" />
 </p>
+
+https://react-native-kline-chart.vercel.app/examples/demo.mp4
+
+
 
 </div>
 

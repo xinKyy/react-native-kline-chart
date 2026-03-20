@@ -91,10 +91,10 @@ export default async function ExamplesPage({
   if (!isValidLocale(locale)) notFound();
   const dict = await getDictionary(locale as Locale);
 
-  const screenshots = [
-    { src: '/examples/1.png', alt: 'Screenshot 1' },
-    { src: '/examples/2.png', alt: 'Screenshot 2' },
-    { src: '/examples/demo.gif', alt: 'Demo GIF' },
+  const media = [
+    { src: '/examples/1.png', alt: 'Screenshot 1', type: 'image' as const },
+    { src: '/examples/2.png', alt: 'Screenshot 2', type: 'image' as const },
+    { src: '/examples/demo.mp4', alt: 'Live Demo', type: 'video' as const },
   ];
 
   return (
@@ -124,29 +124,32 @@ export default async function ExamplesPage({
           <h2 className="text-xl font-semibold mb-6">{dict.docs.examples.screenshotsTitle}</h2>
           <p className="text-sm text-text-secondary mb-6">{dict.docs.examples.screenshotsDescription}</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {screenshots.map((img, i) => (
+            {media.map((item, i) => (
               <div
                 key={i}
                 className="relative aspect-[1179/2556] rounded-xl border border-border overflow-hidden bg-bg-secondary"
               >
-                <Image
-                  src={img.src}
-                  alt={img.alt}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 640px) 100vw, 33vw"
-                  unoptimized={img.src.endsWith('.gif')}
-                />
+                {item.type === 'video' ? (
+                  <video
+                    src={item.src}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <Image
+                    src={item.src}
+                    alt={item.alt}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 100vw, 33vw"
+                  />
+                )}
               </div>
             ))}
           </div>
-          <p className="mt-4 text-xs text-text-tertiary">
-            Place your images at{' '}
-            <code className="px-1.5 py-0.5 rounded bg-bg-card font-mono text-accent">
-              website/public/examples/
-            </code>{' '}
-            — screenshot1.png, screenshot2.png, demo.gif
-          </p>
         </AnimatedSection>
       </div>
     </>
