@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { Canvas, Picture, Skia, matchFont, ClipOp } from '@shopify/react-native-skia';
 import { GestureDetector } from 'react-native-gesture-handler';
@@ -64,7 +64,20 @@ export function KlineChart({
   const crosshairX = useSharedValue(0);
   const crosshairVisible = useSharedValue(false);
 
-  const { dataShared, maShared } = useChartData(data, maPeriods);
+  const prevDataLenRef = useRef(data.length);
+  const { dataShared, maShared, version } = useChartData(data, maPeriods);
+
+  useEffect(() => {
+    const prevLen = prevDataLenRef.current;
+    const curLen = data.length;
+    prevDataLenRef.current = curLen;
+
+    if (curLen !== prevLen) {
+      const visibleCount = Math.floor(chartWidth / (candleWidthSV.value + candleSpacing));
+      const maxOff = Math.max(0, curLen - visibleCount + rightPaddingCandles);
+      scrollOffset.value = maxOff;
+    }
+  }, [data.length, chartWidth, candleSpacing, rightPaddingCandles, scrollOffset, candleWidthSV]);
 
   const fontFamily = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
   const font = useMemo(() => matchFont({ fontFamily, fontSize: 10 }), [fontFamily]);
@@ -190,6 +203,9 @@ export function KlineChart({
 
   const picture = useDerivedValue(() => {
     'worklet';
+    // Read version to guarantee re-execution on every data update
+    void version.value;
+
     const canvas = recorder.beginRecording(Skia.XYWHRect(0, 0, width, height));
 
     // Flat data: [time, open, high, low, close, ...] stride=5

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useSharedValue } from 'react-native-reanimated';
 import type { Candle } from '../types';
 import { computeMA } from '../utils/indicators';
@@ -8,6 +8,11 @@ import { computeMA } from '../utils/indicators';
  *   [time, open, high, low, close, time, open, high, low, close, ...]
  *
  * MA arrays use NaN instead of null for missing values.
+ *
+ * A monotonically increasing `version` shared value is bumped on every data
+ * change so that `useDerivedValue` worklets that read it are guaranteed to
+ * re-execute even when Reanimated's internal shallow-compare on large arrays
+ * fails to detect the mutation.
  */
 export function useChartData(data: Candle[], maPeriods: number[]) {
   const flatData = useMemo(() => {
@@ -32,11 +37,15 @@ export function useChartData(data: Candle[], maPeriods: number[]) {
     });
   }, [data, maPeriods]);
 
-  const dataShared = useSharedValue<number[]>([]);
-  dataShared.value = flatData;
+  const dataShared = useSharedValue<number[]>(flatData);
+  const maShared = useSharedValue<number[][]>(flatMA);
+  const version = useSharedValue(0);
 
-  const maShared = useSharedValue<number[][]>([]);
-  maShared.value = flatMA;
+  useEffect(() => {
+    dataShared.value = flatData;
+    maShared.value = flatMA;
+    version.value = version.value + 1;
+  }, [flatData, flatMA, dataShared, maShared, version]);
 
-  return { dataShared, maShared };
+  return { dataShared, maShared, version };
 }
