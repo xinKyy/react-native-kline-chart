@@ -37,13 +37,28 @@ export function useChartGestures(params: GestureParams) {
     onCrosshairChange,
   } = params;
 
+  const crosshairGesture = Gesture.Pan()
+    .activateAfterLongPress(300)
+    .onStart((e) => {
+      'worklet';
+      crosshairVisible.value = true;
+      crosshairX.value = clamp(e.x, 0, chartWidth);
+    })
+    .onChange((e) => {
+      'worklet';
+      crosshairX.value = clamp(e.x, 0, chartWidth);
+    })
+    .onEnd(() => {
+      'worklet';
+      crosshairVisible.value = false;
+      if (onCrosshairChange) {
+        runOnJS(onCrosshairChange)(null);
+      }
+    });
+
   const panGesture = Gesture.Pan()
     .onChange((e) => {
       'worklet';
-      if (crosshairVisible.value) {
-        crosshairX.value = clamp(e.x, 0, chartWidth);
-        return;
-      }
       const step = candleWidth.value + candleSpacing;
       const delta = -e.changeX / step;
       const visibleCount = Math.floor(chartWidth / step);
@@ -55,8 +70,6 @@ export function useChartGestures(params: GestureParams) {
   const pinchGesture = Gesture.Pinch()
     .onChange((e) => {
       'worklet';
-      if (crosshairVisible.value) return;
-
       const step = candleWidth.value + candleSpacing;
       const visibleCountBefore = Math.floor(chartWidth / step);
       const centerIndex = scrollOffset.value + visibleCountBefore / 2;
@@ -75,23 +88,8 @@ export function useChartGestures(params: GestureParams) {
       scrollOffset.value = clamp(newOffset, 0, maxOffset);
     });
 
-  const longPressGesture = Gesture.LongPress()
-    .minDuration(300)
-    .onStart((e) => {
-      'worklet';
-      crosshairVisible.value = true;
-      crosshairX.value = clamp(e.x, 0, chartWidth);
-    })
-    .onEnd(() => {
-      'worklet';
-      crosshairVisible.value = false;
-      if (onCrosshairChange) {
-        runOnJS(onCrosshairChange)(null);
-      }
-    });
-
   const composed = Gesture.Race(
-    longPressGesture,
+    crosshairGesture,
     Gesture.Simultaneous(panGesture, pinchGesture),
   );
 
