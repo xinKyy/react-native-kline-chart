@@ -7,6 +7,7 @@
   "types": "lib/typescript/index.d.ts",
   "react-native": "src/index.ts",
   "source": "src/index.ts",
+  "author": "xinKyy",
   "files": [
     "src",
     "lib",
@@ -29,7 +30,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/user/react-native-kline-chart"
+    "url": "https://github.com/xinKyy/react-native-kline-chart"
   },
   "license": "MIT",
   "peerDependencies": {
