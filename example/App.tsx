@@ -9,7 +9,7 @@ export default function App() {
   const { width } = useWindowDimensions();
   const chartHeight = 450;
 
-  const data = useMemo(() => generateMockData(2000), []);
+  const data = useMemo(() => generateMockData(20000), []);
   const [activeCandle, setActiveCandle] = useState<Candle | null>(null);
 
   const handleCrosshairChange = useCallback((candle: Candle | null) => {

@@ -1,6 +1,6 @@
 import { Gesture } from 'react-native-gesture-handler';
 import type { SharedValue } from 'react-native-reanimated';
-import { runOnJS } from 'react-native-reanimated';
+import { runOnJS, useSharedValue } from 'react-native-reanimated';
 import type { Candle } from '../types';
 
 type GestureParams = {
@@ -37,37 +37,63 @@ export function useChartGestures(params: GestureParams) {
     onCrosshairChange,
   } = params;
 
-  const crosshairGesture = Gesture.Pan()
-    .activateAfterLongPress(300)
+  const isDragging = useSharedValue(false);
+
+  const longPressGesture = Gesture.LongPress()
+    .minDuration(300)
+    .maxDistance(999999)
     .onStart((e) => {
       'worklet';
+      if (isDragging.value) return;
       crosshairVisible.value = true;
-      crosshairX.value = clamp(e.x, 0, chartWidth);
-    })
-    .onChange((e) => {
-      'worklet';
       crosshairX.value = clamp(e.x, 0, chartWidth);
     })
     .onEnd(() => {
       'worklet';
-      crosshairVisible.value = false;
-      if (onCrosshairChange) {
-        runOnJS(onCrosshairChange)(null);
+      if (crosshairVisible.value) {
+        crosshairVisible.value = false;
+        if (onCrosshairChange) {
+          runOnJS(onCrosshairChange)(null);
+        }
       }
     });
 
   const panGesture = Gesture.Pan()
+    .onStart(() => {
+      'worklet';
+      if (!crosshairVisible.value) {
+        isDragging.value = true;
+      }
+    })
     .onChange((e) => {
       'worklet';
+      if (crosshairVisible.value) {
+        crosshairX.value = clamp(e.x, 0, chartWidth);
+        return;
+      }
       const step = candleWidth.value + candleSpacing;
       const delta = -e.changeX / step;
       const visibleCount = Math.floor(chartWidth / step);
       const maxOffset = Math.max(0, dataLength - visibleCount + rightPaddingCandles);
       scrollOffset.value = clamp(scrollOffset.value + delta, 0, maxOffset);
     })
+    .onEnd(() => {
+      'worklet';
+      isDragging.value = false;
+      if (crosshairVisible.value) {
+        crosshairVisible.value = false;
+        if (onCrosshairChange) {
+          runOnJS(onCrosshairChange)(null);
+        }
+      }
+    })
     .minDistance(1);
 
   const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
+      'worklet';
+      isDragging.value = true;
+    })
     .onChange((e) => {
       'worklet';
       const step = candleWidth.value + candleSpacing;
@@ -86,11 +112,16 @@ export function useChartGestures(params: GestureParams) {
       const newOffset = centerIndex - newVisibleCount / 2;
       const maxOffset = Math.max(0, dataLength - newVisibleCount + rightPaddingCandles);
       scrollOffset.value = clamp(newOffset, 0, maxOffset);
+    })
+    .onEnd(() => {
+      'worklet';
+      isDragging.value = false;
     });
 
-  const composed = Gesture.Race(
-    crosshairGesture,
-    Gesture.Simultaneous(panGesture, pinchGesture),
+  const composed = Gesture.Simultaneous(
+    longPressGesture,
+    panGesture,
+    pinchGesture,
   );
 
   return composed;
