@@ -65,7 +65,7 @@ export function KlineChart({
   const crosshairVisible = useSharedValue(false);
 
   const prevDataLenRef = useRef(data.length);
-  const { dataShared, maShared, version } = useChartData(data, maPeriods);
+  const { dataShared, dateCompsShared, maShared, version } = useChartData(data, maPeriods);
   const isDraggingRef = useRef<{ value: boolean } | null>(null);
 
   const fontFamily = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
@@ -212,13 +212,12 @@ export function KlineChart({
 
   const picture = useDerivedValue(() => {
     'worklet';
-    // Read version to guarantee re-execution on every data update
     void version.value;
 
     const canvas = recorder.beginRecording(Skia.XYWHRect(0, 0, width, height));
 
-    // Flat data: [time, open, high, low, close, ...] stride=5
     const D = dataShared.value;
+    const DC = dateCompsShared.value;
     const dataLen = (D.length / 5) | 0;
 
     const p2y = (price: number, h: number, minP: number, range: number) => {
@@ -232,22 +231,24 @@ export function KlineChart({
       if (abs >= 1000) s = p.toFixed(1);
       else if (abs >= 1) s = p.toFixed(2);
       else s = p.toFixed(4);
-      const parts = s.split('.');
-      const intPart = parts[0]!;
-      const decPart = parts[1] ?? '';
-      let formatted = '';
-      const digits = intPart.replace('-', '');
-      for (let di = 0; di < digits.length; di++) {
-        if (di > 0 && (digits.length - di) % 3 === 0) formatted += ',';
-        formatted += digits[di];
+      if (abs < 1000) return s;
+      const dot = s.indexOf('.');
+      const intEnd = dot >= 0 ? dot : s.length;
+      const start = s.charCodeAt(0) === 45 ? 1 : 0;
+      const intLen = intEnd - start;
+      if (intLen <= 3) return s;
+      const fg = ((intLen - 1) % 3) + 1;
+      let r = s.substring(0, start + fg);
+      for (let i = start + fg; i < intEnd; i += 3) {
+        r += ',' + s.substring(i, i + 3);
       }
-      if (p < 0) formatted = '-' + formatted;
-      return decPart ? formatted + '.' + decPart : formatted;
+      if (dot >= 0) r += s.substring(dot);
+      return r;
     };
 
     const pad2 = (n: number) => (n < 10 ? '0' + n : '' + n);
 
-    canvas.drawRect({ x: 0, y: 0, width, height }, paints.bgPaint);
+    canvas.drawRect(Skia.XYWHRect(0, 0, width, height), paints.bgPaint);
 
     const cw = candleWidthSV.value;
     const step = cw + candleSpacing;
@@ -291,12 +292,17 @@ export function KlineChart({
       }
     }
 
-    // ========== Candles ==========
+    // ========== Candles (batched into 4 paths) ==========
     canvas.save();
     canvas.clipRect(Skia.XYWHRect(0, 0, chartWidth, chartHeight), ClipOp.Intersect, false);
 
     const halfCandle = cw / 2;
     const halfWick = WICK_WIDTH / 2;
+
+    const bullPath = Skia.Path.Make();
+    const bearPath = Skia.Path.Make();
+    const bullWickPath = Skia.Path.Make();
+    const bearWickPath = Skia.Path.Make();
 
     for (let i = startIdx; i < endIdx; i++) {
       const vi = i - startIdx;
@@ -309,10 +315,6 @@ export function KlineChart({
       const cx = vi * step;
       const centerX = cx + halfCandle;
 
-      const isBull = close >= open;
-      const cPaint = isBull ? paints.bullPaint : paints.bearPaint;
-      const wPaint = isBull ? paints.wickBullPaint : paints.wickBearPaint;
-
       const openY = p2y(open, chartHeight, minPrice, priceRange);
       const closeY = p2y(close, chartHeight, minPrice, priceRange);
       const highY = p2y(high, chartHeight, minPrice, priceRange);
@@ -321,15 +323,19 @@ export function KlineChart({
       const bodyTop = Math.min(openY, closeY);
       const bodyH = Math.max(Math.abs(closeY - openY), 1);
 
-      canvas.drawRect(
-        { x: centerX - halfWick, y: highY, width: WICK_WIDTH, height: lowY - highY },
-        wPaint,
-      );
-      canvas.drawRect(
-        { x: cx, y: bodyTop, width: cw, height: bodyH },
-        cPaint,
-      );
+      if (close >= open) {
+        bullWickPath.addRect(Skia.XYWHRect(centerX - halfWick, highY, WICK_WIDTH, lowY - highY));
+        bullPath.addRect(Skia.XYWHRect(cx, bodyTop, cw, bodyH));
+      } else {
+        bearWickPath.addRect(Skia.XYWHRect(centerX - halfWick, highY, WICK_WIDTH, lowY - highY));
+        bearPath.addRect(Skia.XYWHRect(cx, bodyTop, cw, bodyH));
+      }
     }
+
+    canvas.drawPath(bullWickPath, paints.wickBullPaint);
+    canvas.drawPath(bearWickPath, paints.wickBearPaint);
+    canvas.drawPath(bullPath, paints.bullPaint);
+    canvas.drawPath(bearPath, paints.bearPaint);
 
     // ========== High / Low markers ==========
     if (visibleLen > 0) {
@@ -393,7 +399,7 @@ export function KlineChart({
         const lblPad = 6;
         const lblH = 16;
         canvas.drawRect(
-          { x: chartWidth - lblW - lblPad * 2, y: lastY - lblH / 2, width: lblW + lblPad * 2, height: lblH },
+          Skia.XYWHRect(chartWidth - lblW - lblPad * 2, lastY - lblH / 2, lblW + lblPad * 2, lblH),
           paints.lastPriceBgPaint,
         );
         canvas.drawText(lbl, chartWidth - lblW - lblPad, lastY + 4, paints.lastPriceTextPaint, font);
@@ -412,17 +418,17 @@ export function KlineChart({
       canvas.drawText(label, chartWidth - tw - 4, textY, paints.textPaint, font);
     }
 
-    // ========== X-axis time labels ==========
+    // ========== X-axis time labels (uses pre-computed date components) ==========
     const interval = X_AXIS_LABEL_INTERVAL;
     for (let vi = 0; vi < visibleLen; vi += interval) {
       const dataIndex = startIdx + vi;
       if (dataIndex >= dataLen) break;
       const lx = vi * step + cw / 2;
-      const d = new Date(D[dataIndex * 5]!);
-      const mm = pad2(d.getMonth() + 1);
-      const dd = pad2(d.getDate());
-      const hh = pad2(d.getHours());
-      const mi = pad2(d.getMinutes());
+      const dcb = dataIndex * 5;
+      const mm = pad2(DC[dcb + 1]!);
+      const dd = pad2(DC[dcb + 2]!);
+      const hh = pad2(DC[dcb + 3]!);
+      const mi = pad2(DC[dcb + 4]!);
       const timeStr = mm + '/' + dd + ' ' + hh + ':' + mi;
       const tw = font.measureText(timeStr).width;
       const labelX = Math.max(0, Math.min(lx - tw / 2, chartWidth - tw));
@@ -451,23 +457,23 @@ export function KlineChart({
         const plPad = 6;
         const plH = 16;
         canvas.drawRect(
-          { x: chartWidth - ptw - plPad * 2, y: closeY - plH / 2, width: ptw + plPad * 2, height: plH },
+          Skia.XYWHRect(chartWidth - ptw - plPad * 2, closeY - plH / 2, ptw + plPad * 2, plH),
           paints.crosshairBgPaint,
         );
         canvas.drawText(priceText, chartWidth - ptw - plPad, closeY + 4, paints.crosshairLabelPaint, font);
 
-        const td = new Date(D[cb]!);
-        const tyyyy = td.getFullYear();
-        const tmm = pad2(td.getMonth() + 1);
-        const tdd = pad2(td.getDate());
-        const thh = pad2(td.getHours());
-        const tmi = pad2(td.getMinutes());
+        const dcb = dataIdx * 5;
+        const tyyyy = DC[dcb]!;
+        const tmm = pad2(DC[dcb + 1]!);
+        const tdd = pad2(DC[dcb + 2]!);
+        const thh = pad2(DC[dcb + 3]!);
+        const tmi = pad2(DC[dcb + 4]!);
         const timeStr = tyyyy + '/' + tmm + '/' + tdd + ' ' + thh + ':' + tmi;
         const ttw = font.measureText(timeStr).width;
         const tlx = Math.max(0, Math.min(snapX - ttw / 2, chartWidth - ttw - 4));
         const tlPad = 5;
         canvas.drawRect(
-          { x: tlx - tlPad, y: chartHeight + 3, width: ttw + tlPad * 2, height: X_AXIS_HEIGHT - 6 },
+          Skia.XYWHRect(tlx - tlPad, chartHeight + 3, ttw + tlPad * 2, X_AXIS_HEIGHT - 6),
           paints.crosshairBgPaint,
         );
         canvas.drawText(timeStr, tlx, chartHeight + 17, paints.crosshairLabelPaint, font);
@@ -498,8 +504,8 @@ export function KlineChart({
 
         const labelColW = 56;
         let maxValW = 0;
-        for (let vi = 0; vi < values.length; vi++) {
-          const vw = fontPanel.measureText(values[vi]!).width;
+        for (let vi2 = 0; vi2 < values.length; vi2++) {
+          const vw = fontPanel.measureText(values[vi2]!).width;
           if (vw > maxValW) maxValW = vw;
         }
         const panelW = labelColW + maxValW + panelPadX * 2 + 12;
@@ -511,11 +517,11 @@ export function KlineChart({
         const panelY = Math.max(4, Math.min(closeY - panelH / 2, chartHeight - panelH - 4));
 
         canvas.drawRect(
-          { x: panelX, y: panelY, width: panelW, height: panelH },
+          Skia.XYWHRect(panelX, panelY, panelW, panelH),
           paints.panelBgPaint,
         );
         canvas.drawRect(
-          { x: panelX, y: panelY, width: panelW, height: panelH },
+          Skia.XYWHRect(panelX, panelY, panelW, panelH),
           paints.panelBorderPaint,
         );
 
