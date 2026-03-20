@@ -20,6 +20,8 @@ export type KlineChartProps = {
   maPeriods?: number[];
   maColors?: string[];
   showCrosshair?: boolean;
+  /** Light haptic when the crosshair moves to another candle while dragging. Default `true`. */
+  crosshairHaptics?: boolean;
   backgroundColor?: string;
   gridColor?: string;
   textColor?: string;

@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
 import type { SharedValue } from 'react-native-reanimated';
 import { cancelAnimation, runOnJS, useSharedValue, withDecay } from 'react-native-reanimated';
 import type { Candle } from '../types';
+import { triggerCrosshairMoveHaptic } from '../utils/crosshairHaptic';
 
 type GestureParams = {
   scrollOffset: SharedValue<number>;
@@ -14,12 +16,33 @@ type GestureParams = {
   minCandleWidth: number;
   maxCandleWidth: number;
   rightPaddingCandles: number;
+  crosshairHaptics: boolean;
   onCrosshairChange?: (candle: Candle | null) => void;
 };
 
 function clamp(val: number, min: number, max: number): number {
   'worklet';
   return Math.min(Math.max(val, min), max);
+}
+
+function crosshairDataIndex(
+  cx: number,
+  so: number,
+  cw: number,
+  spacing: number,
+  chartW: number,
+  len: number,
+  rightPad: number,
+): number {
+  'worklet';
+  if (len <= 0) return -1;
+  const step = cw + spacing;
+  const visibleCount = Math.floor(chartW / step);
+  const maxOffset = Math.max(0, len - visibleCount + rightPad);
+  const offset = clamp(so, 0, maxOffset);
+  const startIdx = Math.floor(offset);
+  const candleIdx = Math.round(cx / step);
+  return clamp(startIdx + candleIdx, 0, len - 1);
 }
 
 export function useChartGestures(params: GestureParams) {
@@ -34,12 +57,19 @@ export function useChartGestures(params: GestureParams) {
     minCandleWidth,
     maxCandleWidth,
     rightPaddingCandles,
+    crosshairHaptics,
     onCrosshairChange,
   } = params;
 
   const isDragging = useSharedValue(false);
   const panTouchOriginX = useSharedValue(0);
   const panTouchOriginY = useSharedValue(0);
+  const crosshairHapticsSV = useSharedValue(crosshairHaptics);
+  const crosshairHapticLastDataIdx = useSharedValue(-1);
+
+  useEffect(() => {
+    crosshairHapticsSV.value = crosshairHaptics;
+  }, [crosshairHaptics, crosshairHapticsSV]);
 
   const longPressGesture = Gesture.LongPress()
     .minDuration(300)
@@ -48,12 +78,23 @@ export function useChartGestures(params: GestureParams) {
       'worklet';
       if (isDragging.value) return;
       crosshairVisible.value = true;
-      crosshairX.value = clamp(e.x, 0, chartWidth);
+      const x = clamp(e.x, 0, chartWidth);
+      crosshairX.value = x;
+      crosshairHapticLastDataIdx.value = crosshairDataIndex(
+        x,
+        scrollOffset.value,
+        candleWidth.value,
+        candleSpacing,
+        chartWidth,
+        dataLength,
+        rightPaddingCandles,
+      );
     })
     .onEnd(() => {
       'worklet';
       if (crosshairVisible.value) {
         crosshairVisible.value = false;
+        crosshairHapticLastDataIdx.value = -1;
         if (onCrosshairChange) {
           runOnJS(onCrosshairChange)(null);
         }
@@ -103,7 +144,23 @@ export function useChartGestures(params: GestureParams) {
     .onChange((e) => {
       'worklet';
       if (crosshairVisible.value) {
-        crosshairX.value = clamp(e.x, 0, chartWidth);
+        const x = clamp(e.x, 0, chartWidth);
+        crosshairX.value = x;
+        if (crosshairHapticsSV.value && dataLength > 0) {
+          const idx = crosshairDataIndex(
+            x,
+            scrollOffset.value,
+            candleWidth.value,
+            candleSpacing,
+            chartWidth,
+            dataLength,
+            rightPaddingCandles,
+          );
+          if (idx !== crosshairHapticLastDataIdx.value) {
+            crosshairHapticLastDataIdx.value = idx;
+            runOnJS(triggerCrosshairMoveHaptic)();
+          }
+        }
         return;
       }
       const step = candleWidth.value + candleSpacing;
@@ -116,6 +173,7 @@ export function useChartGestures(params: GestureParams) {
       'worklet';
       if (crosshairVisible.value) {
         crosshairVisible.value = false;
+        crosshairHapticLastDataIdx.value = -1;
         if (onCrosshairChange) {
           runOnJS(onCrosshairChange)(null);
         }

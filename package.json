@@ -74,5 +74,8 @@
         }
       ]
     ]
+  },
+  "dependencies": {
+    "react-native-haptic-feedback": "^2.3.4"
   }
 }

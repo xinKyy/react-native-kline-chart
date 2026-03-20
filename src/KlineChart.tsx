@@ -47,6 +47,7 @@ export function KlineChart({
   maPeriods = MA_PERIODS,
   maColors = MA_COLORS,
   showCrosshair = true,
+  crosshairHaptics = true,
   backgroundColor = BACKGROUND_COLOR,
   gridColor = GRID_COLOR,
   textColor = TEXT_COLOR,
@@ -185,6 +186,7 @@ export function KlineChart({
     minCandleWidth,
     maxCandleWidth,
     rightPaddingCandles,
+    crosshairHaptics,
     onCrosshairChange,
   });
   isDraggingRef.current = isDragging;
