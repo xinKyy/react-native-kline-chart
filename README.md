@@ -1,65 +1,86 @@
-# react-native-kline-chart
+<div align="center">
 
-[中文文档](./README.zh-CN.md)
+# 🕯️ React Native KLine Chart
 
-High-performance K-line (Candlestick) chart for React Native, powered by [@shopify/react-native-skia](https://github.com/Shopify/react-native-skia).
+### The KLine chart React Native deserves.
 
-All rendering runs on the UI thread via Skia's `PictureRecorder` — zero React component overhead per candle, smooth 60 fps gestures even with 10,000+ data points.
+**60 fps · Skia-powered · 10K+ candles · Zero jank**
 
-## Screenshots
+[![npm version](https://img.shields.io/npm/v/react-native-kline-chart?style=flat-square&color=2DC08E)](https://www.npmjs.com/package/react-native-kline-chart)
+[![license](https://img.shields.io/npm/l/react-native-kline-chart?style=flat-square&color=blue)](./LICENSE)
+[![platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android-lightgrey?style=flat-square)](https://github.com/xinKyy/react-native-kline-chart)
 
-<p align="center">
-  <img src="./assets/screenshot-chart.png" width="280" alt="K-line chart" />
-  &nbsp;&nbsp;
-  <img src="./assets/screenshot-crosshair.png" width="280" alt="Crosshair with info panel" />
+[📖 Documentation](https://react-native-kline-chart.vercel.app/) · [🎮 Live Demo](https://react-native-kline-chart.vercel.app/) · [🐛 Report Bug](https://github.com/xinKyy/react-native-kline-chart/issues) · [💬 Discussions](https://github.com/xinKyy/react-native-kline-chart/issues)
+
+**[🇨🇳 中文文档](./README.zh-CN.md)**
+
+<br/>
+
+<p>
+  <img src="https://react-native-kline-chart.vercel.app/screenshots/screenshot1.png" width="280" alt="K-line chart" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="https://react-native-kline-chart.vercel.app/screenshots/screenshot2.png" width="280" alt="Crosshair with info panel" />
 </p>
 
-## Features
+</div>
 
-- **Skia Canvas rendering** — Immediate-mode drawing via `PictureRecorder`, no React reconciliation per candle
-- **UI-thread gestures** — Pan, pinch-zoom, long-press crosshair, all running as Reanimated worklets
-- **Viewport clipping** — Only visible candles are drawn; handles 10,000+ data points without jank
-- **MA indicators** — Built-in moving average lines with configurable periods and colors (default MA5 / MA10)
-- **Crosshair + Info panel** — Long-press to show crosshair with OHLC, change, % change, and amplitude
-- **Last price line** — Dashed horizontal line showing the latest close price
-- **High / Low markers** — Visible high and low prices annotated directly on the chart
-- **Price formatting** — Thousand separators, adaptive decimal places
-- **X / Y axis labels** — Time labels on X-axis, price labels on Y-axis
-- **Dashed grid** — Configurable grid rows and column intervals
-- **Right padding** — Extra space after the last candle for readability
-- **Fully customizable** — Colors, sizes, spacing, indicator periods, and more
+---
 
-## Installation
+## Why This Exists
+
+Every React Native trading app needs a candlestick chart. Every existing solution either wraps a WebView (laggy), bridges a native chart library (heavy), or builds on `react-native-svg` (slow at scale).
+
+**react-native-kline-chart** takes a different approach: it draws directly on a Skia canvas using `PictureRecorder`, bypasses React reconciliation entirely, and runs all gestures as Reanimated worklets on the UI thread.
+
+The result? **Butter-smooth 60 fps** with 10,000+ candles. No bridge. No WebView. No compromises.
+
+---
+
+## Highlights
+
+| | Feature | Details |
+|---|---|---|
+| ⚡ | **Skia Rendering** | Immediate-mode drawing via `PictureRecorder` — zero React component overhead per candle |
+| 🤌 | **Native Gestures** | Pan, pinch-to-zoom, long-press crosshair — all Reanimated worklets on the UI thread |
+| 📊 | **10K+ Candles** | Viewport clipping ensures only visible candles are drawn — zero jank at scale |
+| 📈 | **MA Indicators** | Built-in moving average lines with configurable periods and colors (MA5, MA10, MA20…) |
+| 🎯 | **Crosshair + Info Panel** | Long-press to reveal precision crosshair with OHLC, change %, and amplitude |
+| 💹 | **Last Price Line** | Dashed line showing the latest close price in real-time |
+| 🏷️ | **High / Low Markers** | Visible extremes annotated directly on the chart |
+| 🎨 | **Fully Customizable** | Colors, sizes, spacing, indicators — dark theme ready out of the box |
+
+---
+
+## Quick Start
+
+### Install
 
 ```bash
 npm install react-native-kline-chart
-# or
-yarn add react-native-kline-chart
 ```
 
-### Peer dependencies
-
-Make sure these are installed in your app:
+### Peer Dependencies
 
 ```bash
 npm install @shopify/react-native-skia react-native-reanimated react-native-gesture-handler
 ```
 
-Add the Reanimated Babel plugin to your `babel.config.js`:
+Add the Reanimated Babel plugin:
 
 ```js
+// babel.config.js
 module.exports = {
   plugins: ['react-native-reanimated/plugin'],
 };
 ```
 
-## Quick Start
+### Usage
 
 ```tsx
 import { KlineChart } from 'react-native-kline-chart';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-function App() {
+export default function App() {
   const data = [
     { time: 1700000000000, open: 100, high: 105, low: 98, close: 103 },
     { time: 1700000060000, open: 103, high: 107, low: 101, close: 99 },
@@ -72,13 +93,19 @@ function App() {
         data={data}
         width={400}
         height={600}
+        showMA
+        showCrosshair
       />
     </GestureHandlerRootView>
   );
 }
 ```
 
-## API
+That's it. Three imports, one component, **production-ready charts**.
+
+---
+
+## API Reference
 
 ### `<KlineChart />`
 
@@ -89,22 +116,22 @@ function App() {
 | `height` | `number` | **required** | Canvas height in pixels |
 | `candleWidth` | `number` | `8` | Width of each candle body |
 | `candleSpacing` | `number` | `3` | Gap between candles |
-| `minCandleWidth` | `number` | `2` | Minimum candle width when pinch-zooming out |
-| `maxCandleWidth` | `number` | `24` | Maximum candle width when pinch-zooming in |
-| `bullishColor` | `string` | `'#2DC08E'` | Color for bullish (close >= open) candles |
-| `bearishColor` | `string` | `'#F6465D'` | Color for bearish candles |
+| `minCandleWidth` | `number` | `2` | Min candle width when zooming out |
+| `maxCandleWidth` | `number` | `24` | Max candle width when zooming in |
+| `bullishColor` | `string` | `'#2DC08E'` | Bullish (close ≥ open) candle color |
+| `bearishColor` | `string` | `'#F6465D'` | Bearish candle color |
 | `showMA` | `boolean` | `true` | Show moving average lines |
-| `maPeriods` | `number[]` | `[5, 10]` | MA calculation periods |
-| `maColors` | `string[]` | `['#F7931A', '#5B8DEF', '#C084FC']` | Colors for each MA line |
-| `showCrosshair` | `boolean` | `true` | Enable long-press crosshair with info panel |
+| `maPeriods` | `number[]` | `[5, 10]` | MA periods |
+| `maColors` | `string[]` | `['#F7931A', '#5B8DEF', '#C084FC']` | MA line colors |
+| `showCrosshair` | `boolean` | `true` | Enable long-press crosshair |
 | `backgroundColor` | `string` | `'#0B0E11'` | Chart background color |
 | `gridColor` | `string` | `'rgba(255,255,255,0.2)'` | Grid line color |
 | `textColor` | `string` | `'rgba(255,255,255,0.35)'` | Axis label color |
 | `crosshairColor` | `string` | `'rgba(255,255,255,0.3)'` | Crosshair line color |
-| `rightPaddingCandles` | `number` | `20` | Number of empty candle widths as right padding |
-| `onCrosshairChange` | `(candle: Candle \| null) => void` | — | Callback when crosshair activates/deactivates |
+| `rightPaddingCandles` | `number` | `20` | Right padding (in candle widths) |
+| `onCrosshairChange` | `(candle: Candle \| null) => void` | — | Crosshair activation callback |
 
-### `Candle` type
+### `Candle`
 
 ```typescript
 type Candle = {
@@ -123,27 +150,33 @@ import { KlineChart, computeMA } from 'react-native-kline-chart';
 import type { Candle, KlineChartProps } from 'react-native-kline-chart';
 ```
 
+---
+
 ## Architecture
 
-### Rendering: Immediate Mode (Picture API)
+```
+┌─────────────────────────────────────────────────┐
+│                  JS Thread                       │
+│  useMemo → pre-compute MA values                │
+│  useChartData → flatten candle data to Float64   │
+└───────────────────┬─────────────────────────────┘
+                    │ SharedValue
+┌───────────────────▼─────────────────────────────┐
+│                  UI Thread                        │
+│  useDerivedValue → PictureRecorder → draw all    │
+│  Gesture worklets → pan / pinch / long-press     │
+│  Viewport clipping → only visible candles drawn  │
+└─────────────────────────────────────────────────┘
+```
 
-Uses `Skia.PictureRecorder` inside a `useDerivedValue` worklet to batch all drawing commands on the UI thread. This avoids creating React components per candle and eliminates reconciliation overhead during gestures.
-
-### Gestures
-
-- **Pan** — Scroll through historical data by updating `scrollOffset` shared value
-- **Pinch** — Zoom in/out by changing `candleWidth` shared value
-- **Long-press** — Activate crosshair with info panel overlay
-
-All gesture callbacks run as Reanimated worklets on the UI thread.
-
-### Performance
-
-- Only visible candles are drawn (viewport clipping)
-- MA values are pre-computed with `useMemo` on the JS thread
-- All animation/gesture state uses Reanimated `SharedValue` (no React re-renders)
-- Paint objects are reused for all bullish/bearish candles
+**Why it's fast:**
+- Skia `PictureRecorder` batches all draw calls — no React reconciliation per candle
+- All gesture handlers run as Reanimated worklets — never touch the JS thread
+- Candle/wick geometry is batched into 4 Skia `Path` objects (bull body, bear body, bull wick, bear wick)
+- Paint objects are reused across frames
 - Thousand-separator formatting runs inside worklets
+
+---
 
 ## Running the Example
 
@@ -154,6 +187,22 @@ cd ios && pod install && cd ..
 npx react-native run-ios
 ```
 
+---
+
+## Contributing
+
+PRs welcome! Please open an issue first to discuss what you'd like to change.
+
 ## License
 
-MIT
+[MIT](./LICENSE) © [xinKyy](https://github.com/xinKyy)
+
+---
+
+<div align="center">
+
+**If this helped you, consider giving it a ⭐**
+
+[Website](https://react-native-kline-chart.vercel.app/) · [npm](https://www.npmjs.com/package/react-native-kline-chart) · [GitHub](https://github.com/xinKyy/react-native-kline-chart)
+
+</div>
