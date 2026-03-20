@@ -15,17 +15,34 @@ import { useBinanceKline } from './src/useBinanceKline';
 import type { TimeInterval } from './src/useBinanceKline';
 
 const INTERVALS: { label: string; value: TimeInterval }[] = [
-  { label: '1秒', value: '1s' },
-  { label: '1分', value: '1m' },
-  { label: '3分', value: '3m' },
-  { label: '15分', value: '15m' },
-  { label: '1时', value: '1h' },
-  { label: '4时', value: '4h' },
-  { label: '1日', value: '1d' },
+  { label: '1s', value: '1s' },
+  { label: '1m', value: '1m' },
+  { label: '3m', value: '3m' },
+  { label: '15m', value: '15m' },
+  { label: '1h', value: '1h' },
+  { label: '4h', value: '4h' },
+  { label: '1d', value: '1d' },
 ];
 
-const TABS = ['行情', '概况', '数据', '动态', '交易', '跟单', '策略'];
-const INDICATORS = ['VOL', 'MA', 'EMA', 'BOLL', 'SAR', '撑压线', '超级趋势', '包络线'];
+const TABS = [
+  'Markets',
+  'Overview',
+  'Data',
+  'Feed',
+  'Trade',
+  'Copy',
+  'Strategies',
+];
+const INDICATORS = [
+  'VOL',
+  'MA',
+  'EMA',
+  'BOLL',
+  'SAR',
+  'S/R',
+  'SuperTrend',
+  'Envelope',
+];
 
 function formatPrice(p: number): string {
   if (p === 0) return '--';
@@ -76,7 +93,7 @@ export default function App() {
           <Text style={styles.backArrow}>{'‹'}</Text>
           <Text style={styles.pairName}>BTC/USDT</Text>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>现货</Text>
+            <Text style={styles.badgeText}>Spot</Text>
           </View>
           <View style={styles.badge}>
             <Text style={styles.badgeText}>10x</Text>
@@ -146,7 +163,7 @@ export default function App() {
               </TouchableOpacity>
             ))}
             <TouchableOpacity style={styles.intervalBtn}>
-              <Text style={styles.intervalText}>更多 ▾</Text>
+              <Text style={styles.intervalText}>More ▾</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.intervalRight}>
@@ -178,7 +195,7 @@ export default function App() {
           {loading ? (
             <View style={[styles.loadingContainer, { height: chartHeight }]}>
               <ActivityIndicator color="#2DC08E" size="large" />
-              <Text style={styles.loadingText}>加载K线数据...</Text>
+              <Text style={styles.loadingText}>Loading candlestick data…</Text>
             </View>
           ) : (
             <KlineChart
@@ -225,19 +242,19 @@ export default function App() {
         <View style={styles.bottomTabs}>
           <View style={styles.bottomTabItem}>
             <Text style={styles.bottomTabIcon}>📋</Text>
-            <Text style={styles.bottomTabLabel}>订单表</Text>
+            <Text style={styles.bottomTabLabel}>Order book</Text>
           </View>
           <View style={styles.bottomTabItem}>
             <Text style={styles.bottomTabIcon}>📊</Text>
-            <Text style={styles.bottomTabLabel}>深度图</Text>
+            <Text style={styles.bottomTabLabel}>Depth</Text>
           </View>
           <View style={styles.bottomTabItem}>
             <Text style={styles.bottomTabIcon}>🔄</Text>
-            <Text style={styles.bottomTabLabel}>最新成交</Text>
+            <Text style={styles.bottomTabLabel}>Trades</Text>
           </View>
           <View style={styles.bottomTabItem}>
             <Text style={styles.bottomTabIcon}>⚡</Text>
-            <Text style={styles.bottomTabLabel}>关键事件</Text>
+            <Text style={styles.bottomTabLabel}>Events</Text>
           </View>
         </View>
       </ScrollView>
@@ -245,17 +262,17 @@ export default function App() {
       {/* Floating Trade Button */}
       <View style={styles.floatingBar}>
         <TouchableOpacity style={styles.tradeButton}>
-          <Text style={styles.tradeButtonText}>交易</Text>
+          <Text style={styles.tradeButtonText}>Trade</Text>
         </TouchableOpacity>
         <View style={styles.floatingIcons}>
           <View style={styles.floatingIconItem}>
-            <Text style={styles.floatingIconText}>网格</Text>
+            <Text style={styles.floatingIconText}>Grid</Text>
           </View>
           <View style={styles.floatingIconItem}>
-            <Text style={styles.floatingIconText}>合约</Text>
+            <Text style={styles.floatingIconText}>Futures</Text>
           </View>
           <View style={styles.floatingIconItem}>
-            <Text style={styles.floatingIconText}>预警</Text>
+            <Text style={styles.floatingIconText}>Alerts</Text>
           </View>
         </View>
       </View>
@@ -291,12 +308,12 @@ function OrderBookSection() {
   return (
     <View style={styles.orderBook}>
       <View style={styles.orderBookHeader}>
-        <Text style={styles.orderBookHeaderLeft}>买入 (BTC)</Text>
+        <Text style={styles.orderBookHeaderLeft}>Buy (BTC)</Text>
         <View style={styles.orderBookHeaderCenter}>
           <Text style={styles.orderBookStep}>0.1</Text>
           <Text style={styles.orderBookDropdown}>▾</Text>
         </View>
-        <Text style={styles.orderBookHeaderRight}>卖出 (BTC)</Text>
+        <Text style={styles.orderBookHeaderRight}>Sell (BTC)</Text>
       </View>
 
       {bids.map((bid, i) => (
