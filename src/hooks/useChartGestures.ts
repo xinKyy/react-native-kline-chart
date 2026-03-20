@@ -38,6 +38,8 @@ export function useChartGestures(params: GestureParams) {
   } = params;
 
   const isDragging = useSharedValue(false);
+  const panTouchOriginX = useSharedValue(0);
+  const panTouchOriginY = useSharedValue(0);
 
   const longPressGesture = Gesture.LongPress()
     .minDuration(300)
@@ -58,7 +60,39 @@ export function useChartGestures(params: GestureParams) {
       }
     });
 
+  const AXIS_LOCK_PX = 10;
+
   const panGesture = Gesture.Pan()
+    .manualActivation(true)
+    .onTouchesDown((e) => {
+      'worklet';
+      const t = e.allTouches[0];
+      if (t !== undefined) {
+        panTouchOriginX.value = t.x;
+        panTouchOriginY.value = t.y;
+      }
+    })
+    .onTouchesMove((e, state) => {
+      'worklet';
+      if (e.numberOfTouches !== 1) {
+        state.fail();
+        return;
+      }
+      const t = e.allTouches[0];
+      if (t === undefined) return;
+      const dx = t.x - panTouchOriginX.value;
+      const dy = t.y - panTouchOriginY.value;
+      const adx = Math.abs(dx);
+      const ady = Math.abs(dy);
+      if (adx < AXIS_LOCK_PX && ady < AXIS_LOCK_PX) {
+        return;
+      }
+      if (adx > ady) {
+        state.activate();
+      } else {
+        state.fail();
+      }
+    })
     .onStart(() => {
       'worklet';
       cancelAnimation(scrollOffset);
@@ -96,8 +130,7 @@ export function useChartGestures(params: GestureParams) {
         { velocity, deceleration: 0.997, clamp: [0, maxOffset] },
         () => { isDragging.value = false; },
       );
-    })
-    .minDistance(1);
+    });
 
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {

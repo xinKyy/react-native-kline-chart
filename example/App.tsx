@@ -6,10 +6,9 @@ import {
   useWindowDimensions,
   StatusBar,
   TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
 import { KlineChart } from 'react-native-kline-chart';
 import type { Candle } from 'react-native-kline-chart';
 import { useBinanceKline } from './src/useBinanceKline';
