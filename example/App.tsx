@@ -71,28 +71,28 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <StatusBar barStyle="light-content" />
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.backArrow}>{'‹'}</Text>
+          <Text style={styles.pairName}>BTC/USDT</Text>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>现货</Text>
+          </View>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>10x</Text>
+          </View>
+        </View>
+        <View style={styles.headerRight}>
+          <Text style={styles.headerIcon}>★</Text>
+          <Text style={styles.headerIcon}>↗</Text>
+        </View>
+      </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         bounces={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.backArrow}>{'‹'}</Text>
-            <Text style={styles.pairName}>BTC/USDT</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>现货</Text>
-            </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>10x</Text>
-            </View>
-          </View>
-          <View style={styles.headerRight}>
-            <Text style={styles.headerIcon}>★</Text>
-            <Text style={styles.headerIcon}>↗</Text>
-          </View>
-        </View>
 
         {/* Price */}
         <View style={styles.priceRow}>
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   priceText: {
-    fontSize: 15,
+    fontSize: 30,
     fontWeight: '600',
   },
   changeText: {
