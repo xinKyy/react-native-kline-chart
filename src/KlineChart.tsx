@@ -419,8 +419,16 @@ export function KlineChart({
     }
 
     // ========== X-axis time labels (uses pre-computed date components) ==========
-    const interval = X_AXIS_LABEL_INTERVAL;
-    for (let vi = 0; vi < visibleLen; vi += interval) {
+    // When pinch-zooming out, step shrinks; fixed candle interval would pack labels too tight.
+    const xLabelW = font.measureText('12/31 23:59').width;
+    const xLabelMinSepPx = xLabelW + 8;
+    const xAxisInterval = Math.max(
+      X_AXIS_LABEL_INTERVAL,
+      Math.max(1, Math.ceil(xLabelMinSepPx / step)),
+    );
+    let prevLabelRight = -1e9;
+    const xLabelGap = 6;
+    for (let vi = 0; vi < visibleLen; vi += xAxisInterval) {
       const dataIndex = startIdx + vi;
       if (dataIndex >= dataLen) break;
       const lx = vi * step + cw / 2;
@@ -431,8 +439,13 @@ export function KlineChart({
       const mi = pad2(DC[dcb + 4]!);
       const timeStr = mm + '/' + dd + ' ' + hh + ':' + mi;
       const tw = font.measureText(timeStr).width;
-      const labelX = Math.max(0, Math.min(lx - tw / 2, chartWidth - tw));
+      let labelX = lx - tw / 2;
+      labelX = Math.max(0, Math.min(labelX, chartWidth - tw));
+      if (labelX < prevLabelRight + xLabelGap) {
+        continue;
+      }
       canvas.drawText(timeStr, labelX, chartHeight + 18, paints.textPaint, font);
+      prevLabelRight = labelX + tw;
     }
 
     // ========== Crosshair + Info Panel ==========
