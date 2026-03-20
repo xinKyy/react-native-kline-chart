@@ -1,6 +1,6 @@
 {
   "name": "react-native-kline-chart",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "High-performance K-line (Candlestick) chart for React Native, powered by Skia",
   "main": "lib/commonjs/index.js",
   "module": "lib/module/index.js",
