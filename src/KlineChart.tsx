@@ -192,6 +192,10 @@ export function KlineChart({
     'worklet';
     const canvas = recorder.beginRecording(Skia.XYWHRect(0, 0, width, height));
 
+    // Flat data: [time, open, high, low, close, ...] stride=5
+    const D = dataShared.value;
+    const dataLen = (D.length / 5) | 0;
+
     const p2y = (price: number, h: number, minP: number, range: number) => {
       if (range === 0) return h / 2;
       return h - ((price - minP) / range) * h;
@@ -208,34 +212,37 @@ export function KlineChart({
       const decPart = parts[1] ?? '';
       let formatted = '';
       const digits = intPart.replace('-', '');
-      for (let i = 0; i < digits.length; i++) {
-        if (i > 0 && (digits.length - i) % 3 === 0) formatted += ',';
-        formatted += digits[i];
+      for (let di = 0; di < digits.length; di++) {
+        if (di > 0 && (digits.length - di) % 3 === 0) formatted += ',';
+        formatted += digits[di];
       }
       if (p < 0) formatted = '-' + formatted;
       return decPart ? formatted + '.' + decPart : formatted;
     };
 
+    const pad2 = (n: number) => (n < 10 ? '0' + n : '' + n);
+
     canvas.drawRect({ x: 0, y: 0, width, height }, paints.bgPaint);
 
-    const allData = dataShared.value;
     const cw = candleWidthSV.value;
     const step = cw + candleSpacing;
     const visibleCount = Math.floor(chartWidth / step);
-    const maxOff = Math.max(0, allData.length - visibleCount + rightPaddingCandles);
+    const maxOff = Math.max(0, dataLen - visibleCount + rightPaddingCandles);
     const offset = clamp(scrollOffset.value, 0, maxOff);
     const startIdx = Math.floor(offset);
-    const endIdx = Math.min(startIdx + visibleCount + 2, allData.length);
-    const visibleData = allData.slice(startIdx, endIdx);
+    const endIdx = Math.min(startIdx + visibleCount + 2, dataLen);
+    const visibleLen = endIdx - startIdx;
 
     let minPrice = Infinity;
     let maxPrice = -Infinity;
-    let highIdx = 0;
-    let lowIdx = 0;
-    for (let i = 0; i < visibleData.length; i++) {
-      const c = visibleData[i]!;
-      if (c.high > maxPrice) { maxPrice = c.high; highIdx = i; }
-      if (c.low < minPrice) { minPrice = c.low; lowIdx = i; }
+    let highVi = 0;
+    let lowVi = 0;
+    for (let i = startIdx; i < endIdx; i++) {
+      const b = i * 5;
+      const h = D[b + 2]!;
+      const l = D[b + 3]!;
+      if (h > maxPrice) { maxPrice = h; highVi = i - startIdx; }
+      if (l < minPrice) { minPrice = l; lowVi = i - startIdx; }
     }
     if (minPrice === Infinity) { minPrice = 0; maxPrice = 100; }
     const pricePad = (maxPrice - minPrice) * PRICE_PADDING_RATIO;
@@ -266,19 +273,25 @@ export function KlineChart({
     const halfCandle = cw / 2;
     const halfWick = WICK_WIDTH / 2;
 
-    for (let i = 0; i < visibleData.length; i++) {
-      const candle = visibleData[i]!;
-      const cx = i * step;
+    for (let i = startIdx; i < endIdx; i++) {
+      const vi = i - startIdx;
+      const b = i * 5;
+      const open = D[b + 1]!;
+      const high = D[b + 2]!;
+      const low = D[b + 3]!;
+      const close = D[b + 4]!;
+
+      const cx = vi * step;
       const centerX = cx + halfCandle;
 
-      const isBull = candle.close >= candle.open;
+      const isBull = close >= open;
       const cPaint = isBull ? paints.bullPaint : paints.bearPaint;
       const wPaint = isBull ? paints.wickBullPaint : paints.wickBearPaint;
 
-      const openY = p2y(candle.open, chartHeight, minPrice, priceRange);
-      const closeY = p2y(candle.close, chartHeight, minPrice, priceRange);
-      const highY = p2y(candle.high, chartHeight, minPrice, priceRange);
-      const lowY = p2y(candle.low, chartHeight, minPrice, priceRange);
+      const openY = p2y(open, chartHeight, minPrice, priceRange);
+      const closeY = p2y(close, chartHeight, minPrice, priceRange);
+      const highY = p2y(high, chartHeight, minPrice, priceRange);
+      const lowY = p2y(low, chartHeight, minPrice, priceRange);
 
       const bodyTop = Math.min(openY, closeY);
       const bodyH = Math.max(Math.abs(closeY - openY), 1);
@@ -294,8 +307,8 @@ export function KlineChart({
     }
 
     // ========== High / Low markers ==========
-    if (visibleData.length > 0) {
-      const highCx = highIdx * step + halfCandle;
+    if (visibleLen > 0) {
+      const highCx = highVi * step + halfCandle;
       const highY = p2y(rawMax, chartHeight, minPrice, priceRange);
       const highLabel = fmtPrice(rawMax);
       const htw = fontSmall.measureText(highLabel).width;
@@ -308,7 +321,7 @@ export function KlineChart({
         canvas.drawText(highLabel, highCx - 33 - htw, highY + 3, paints.highLowTextPaint, fontSmall);
       }
 
-      const lowCx = lowIdx * step + halfCandle;
+      const lowCx = lowVi * step + halfCandle;
       const lowY = p2y(rawMin, chartHeight, minPrice, priceRange);
       const lowLabel = fmtPrice(rawMin);
       const ltw = fontSmall.measureText(lowLabel).width;
@@ -331,10 +344,10 @@ export function KlineChart({
         if (!maData || !maPaint) continue;
         const path = Skia.Path.Make();
         let started = false;
-        const maEnd = Math.min(startIdx + visibleCount + 2, maData.length);
+        const maEnd = Math.min(endIdx, maData.length);
         for (let i = startIdx; i < maEnd; i++) {
-          const val = maData[i];
-          if (val === null || val === undefined) { started = false; continue; }
+          const val = maData[i]!;
+          if (val !== val) { started = false; continue; }
           const lx = (i - startIdx) * step + halfCandle;
           const ly = p2y(val, chartHeight, minPrice, priceRange);
           if (!started) { path.moveTo(lx, ly); started = true; }
@@ -345,12 +358,12 @@ export function KlineChart({
     }
 
     // ========== Last price indicator ==========
-    if (allData.length > 0) {
-      const lastCandle = allData[allData.length - 1]!;
-      const lastY = p2y(lastCandle.close, chartHeight, minPrice, priceRange);
+    if (dataLen > 0) {
+      const lastClose = D[(dataLen - 1) * 5 + 4]!;
+      const lastY = p2y(lastClose, chartHeight, minPrice, priceRange);
       if (lastY >= 0 && lastY <= chartHeight) {
         canvas.drawLine(0, lastY, chartWidth, lastY, paints.lastPricePaint);
-        const lbl = fmtPrice(lastCandle.close);
+        const lbl = fmtPrice(lastClose);
         const lblW = font.measureText(lbl).width;
         const lblPad = 6;
         const lblH = 16;
@@ -364,7 +377,7 @@ export function KlineChart({
 
     canvas.restore();
 
-    // ========== Y-axis labels (floating over chart, right-aligned) ==========
+    // ========== Y-axis labels ==========
     for (let i = 0; i <= gridRows; i++) {
       const gy = (chartHeight / gridRows) * i;
       const gp = maxPrice - ((maxPrice - minPrice) / gridRows) * i;
@@ -376,17 +389,16 @@ export function KlineChart({
 
     // ========== X-axis time labels ==========
     const interval = X_AXIS_LABEL_INTERVAL;
-    for (let i = 0; i < visibleData.length; i += interval) {
-      const dataIndex = startIdx + i;
-      if (dataIndex >= allData.length) break;
-      const candle = allData[dataIndex]!;
-      const lx = i * step + cw / 2;
-      const d = new Date(candle.time);
-      const mm = (d.getMonth() + 1).toString().padStart(2, '0');
-      const dd = d.getDate().toString().padStart(2, '0');
-      const hh = d.getHours().toString().padStart(2, '0');
-      const mi = d.getMinutes().toString().padStart(2, '0');
-      const timeStr = `${mm}/${dd} ${hh}:${mi}`;
+    for (let vi = 0; vi < visibleLen; vi += interval) {
+      const dataIndex = startIdx + vi;
+      if (dataIndex >= dataLen) break;
+      const lx = vi * step + cw / 2;
+      const d = new Date(D[dataIndex * 5]!);
+      const mm = pad2(d.getMonth() + 1);
+      const dd = pad2(d.getDate());
+      const hh = pad2(d.getHours());
+      const mi = pad2(d.getMinutes());
+      const timeStr = mm + '/' + dd + ' ' + hh + ':' + mi;
       const tw = font.measureText(timeStr).width;
       const labelX = Math.max(0, Math.min(lx - tw / 2, chartWidth - tw));
       canvas.drawText(timeStr, labelX, chartHeight + 18, paints.textPaint, font);
@@ -397,17 +409,19 @@ export function KlineChart({
       const chx = crosshairX.value;
       const candleIdx = Math.round(chx / step);
       const dataIdx = startIdx + candleIdx;
-      if (dataIdx >= 0 && dataIdx < allData.length) {
-        const candle = allData[dataIdx]!;
+      if (dataIdx >= 0 && dataIdx < dataLen) {
+        const cb = dataIdx * 5;
+        const cOpen = D[cb + 1]!;
+        const cHigh = D[cb + 2]!;
+        const cLow = D[cb + 3]!;
+        const cClose = D[cb + 4]!;
         const snapX = candleIdx * step + cw / 2;
-        const closeY = p2y(candle.close, chartHeight, minPrice, priceRange);
+        const closeY = p2y(cClose, chartHeight, minPrice, priceRange);
 
-        // Crosshair lines
         canvas.drawLine(snapX, 0, snapX, chartHeight, paints.crosshairPaint);
         canvas.drawLine(0, closeY, chartWidth, closeY, paints.crosshairPaint);
 
-        // Price label on right
-        const priceText = fmtPrice(candle.close);
+        const priceText = fmtPrice(cClose);
         const ptw = font.measureText(priceText).width;
         const plPad = 6;
         const plH = 16;
@@ -417,14 +431,13 @@ export function KlineChart({
         );
         canvas.drawText(priceText, chartWidth - ptw - plPad, closeY + 4, paints.crosshairLabelPaint, font);
 
-        // Time label on X-axis
-        const td = new Date(candle.time);
+        const td = new Date(D[cb]!);
         const tyyyy = td.getFullYear();
-        const tmm = (td.getMonth() + 1).toString().padStart(2, '0');
-        const tdd = td.getDate().toString().padStart(2, '0');
-        const thh = td.getHours().toString().padStart(2, '0');
-        const tmi = td.getMinutes().toString().padStart(2, '0');
-        const timeStr = `${tyyyy}/${tmm}/${tdd} ${thh}:${tmi}`;
+        const tmm = pad2(td.getMonth() + 1);
+        const tdd = pad2(td.getDate());
+        const thh = pad2(td.getHours());
+        const tmi = pad2(td.getMinutes());
+        const timeStr = tyyyy + '/' + tmm + '/' + tdd + ' ' + thh + ':' + tmi;
         const ttw = font.measureText(timeStr).width;
         const tlx = Math.max(0, Math.min(snapX - ttw / 2, chartWidth - ttw - 4));
         const tlPad = 5;
@@ -434,29 +447,20 @@ export function KlineChart({
         );
         canvas.drawText(timeStr, tlx, chartHeight + 17, paints.crosshairLabelPaint, font);
 
-        // ========== OKX-style Info Panel ==========
-        const change = candle.close - candle.open;
-        const changePct = candle.open !== 0 ? (change / candle.open) * 100 : 0;
-        const amplitude = candle.open !== 0 ? ((candle.high - candle.low) / candle.open) * 100 : 0;
+        // ========== Info Panel ==========
+        const change = cClose - cOpen;
+        const changePct = cOpen !== 0 ? (change / cOpen) * 100 : 0;
+        const amplitude = cOpen !== 0 ? ((cHigh - cLow) / cOpen) * 100 : 0;
 
-        const labels = [
-          'Time',        // Time
-          'Open',        // Open
-          'High',        // High
-          'Low',         // Low
-          'Close',       // Close
-          'Change',      // Change
-          '% Change',    // Change
-          'Amplitude',   // Amplitude
-        ];
+        const labels = ['Time', 'Open', 'High', 'Low', 'Close', 'Change', '% Change', 'Amplitude'];
 
-        const timeVal = `${tmm}/${tdd} ${thh}:${tmi}`;
+        const timeVal = tmm + '/' + tdd + ' ' + thh + ':' + tmi;
         const values = [
           timeVal,
-          fmtPrice(candle.open),
-          fmtPrice(candle.high),
-          fmtPrice(candle.low),
-          fmtPrice(candle.close),
+          fmtPrice(cOpen),
+          fmtPrice(cHigh),
+          fmtPrice(cLow),
+          fmtPrice(cClose),
           fmtPrice(change),
           (changePct >= 0 ? '+' : '') + changePct.toFixed(2) + '%',
           amplitude.toFixed(2) + '%',
@@ -468,10 +472,10 @@ export function KlineChart({
         const panelH = labels.length * rowH + panelPadY * 2;
 
         const labelColW = 56;
-        const valMeasures = values.map(v => fontPanel.measureText(v).width);
         let maxValW = 0;
-        for (let vi = 0; vi < valMeasures.length; vi++) {
-          if (valMeasures[vi]! > maxValW) maxValW = valMeasures[vi]!;
+        for (let vi = 0; vi < values.length; vi++) {
+          const vw = fontPanel.measureText(values[vi]!).width;
+          if (vw > maxValW) maxValW = vw;
         }
         const panelW = labelColW + maxValW + panelPadX * 2 + 12;
 
@@ -481,12 +485,10 @@ export function KlineChart({
           : Math.max(snapX - panelW - 20, 4);
         const panelY = Math.max(4, Math.min(closeY - panelH / 2, chartHeight - panelH - 4));
 
-        // Panel background
         canvas.drawRect(
           { x: panelX, y: panelY, width: panelW, height: panelH },
           paints.panelBgPaint,
         );
-        // Panel border
         canvas.drawRect(
           { x: panelX, y: panelY, width: panelW, height: panelH },
           paints.panelBorderPaint,
