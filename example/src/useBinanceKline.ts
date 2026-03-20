@@ -2,9 +2,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Candle } from 'react-native-kline-chart';
 
 export type TimeInterval =
-  | '1m' | '3m' | '5m' | '15m' | '30m'
+  | '1s' | '1m' | '3m' | '5m' | '15m' | '30m'
   | '1h' | '2h' | '4h' | '6h' | '8h' | '12h'
   | '1d' | '3d' | '1w' | '1M';
+
+const MAX_CANDLES = 1000;
 
 const REST_BASE = 'https://api.binance.com/api/v3';
 
@@ -83,7 +85,8 @@ export function useBinanceKline(
           }
           if (candle.time > last.time) {
             setPrevClose(last.close);
-            return [...prev, candle];
+            const next = [...prev, candle];
+            return next.length > MAX_CANDLES ? next.slice(next.length - MAX_CANDLES) : next;
           }
           return prev;
         });

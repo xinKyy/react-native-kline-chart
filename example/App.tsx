@@ -16,11 +16,13 @@ import { useBinanceKline } from './src/useBinanceKline';
 import type { TimeInterval } from './src/useBinanceKline';
 
 const INTERVALS: { label: string; value: TimeInterval }[] = [
+  { label: '1秒', value: '1s' },
+  { label: '1分', value: '1m' },
+  { label: '3分', value: '3m' },
   { label: '15分', value: '15m' },
   { label: '1时', value: '1h' },
   { label: '4时', value: '4h' },
   { label: '1日', value: '1d' },
-  { label: '1周', value: '1w' },
 ];
 
 const TABS = ['行情', '概况', '数据', '动态', '交易', '跟单', '策略'];
@@ -36,7 +38,7 @@ function formatPrice(p: number): string {
 
 export default function App() {
   const { width } = useWindowDimensions();
-  const [interval, setInterval] = useState<TimeInterval>('1d');
+  const [interval, setInterval] = useState<TimeInterval>('1s');
   const [activeTab, setActiveTab] = useState(0);
   const [activeIndicator, setActiveIndicator] = useState(1);
   const [activeCandle, setActiveCandle] = useState<Candle | null>(null);
