@@ -105,10 +105,10 @@ export function KlineChart({
     lastPricePaint.setPathEffect(Skia.PathEffect.MakeDash([4, 3], 0));
 
     const lastPriceBgPaint = Skia.Paint();
-    lastPriceBgPaint.setColor(Skia.Color('rgba(255, 255, 255, 0.08)'));
+    lastPriceBgPaint.setColor(Skia.Color('rgba(255, 255, 255, 0.2)'));
 
     const lastPriceTextPaint = Skia.Paint();
-    lastPriceTextPaint.setColor(Skia.Color('rgba(255, 255, 255, 0.6)'));
+    lastPriceTextPaint.setColor(Skia.Color('rgba(255, 255, 255, 0.8)'));
 
     const chPaint = Skia.Paint();
     chPaint.setColor(Skia.Color(crosshairColor));
