@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Platform } from 'react-native';
 import { Canvas, Picture, Skia, matchFont, ClipOp } from '@shopify/react-native-skia';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
@@ -65,9 +66,10 @@ export function KlineChart({
 
   const { dataShared, maShared } = useChartData(data, maPeriods);
 
-  const font = useMemo(() => matchFont({ fontSize: 10 }), []);
-  const fontSmall = useMemo(() => matchFont({ fontSize: 9 }), []);
-  const fontPanel = useMemo(() => matchFont({ fontSize: 11 }), []);
+  const fontFamily = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
+  const font = useMemo(() => matchFont({ fontFamily, fontSize: 10 }), [fontFamily]);
+  const fontSmall = useMemo(() => matchFont({ fontFamily, fontSize: 9 }), [fontFamily]);
+  const fontPanel = useMemo(() => matchFont({ fontFamily, fontSize: 11 }), [fontFamily]);
 
   const paints = useMemo(() => {
     const bullPaint = Skia.Paint();
