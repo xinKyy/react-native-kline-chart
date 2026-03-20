@@ -66,18 +66,7 @@ export function KlineChart({
 
   const prevDataLenRef = useRef(data.length);
   const { dataShared, maShared, version } = useChartData(data, maPeriods);
-
-  useEffect(() => {
-    const prevLen = prevDataLenRef.current;
-    const curLen = data.length;
-    prevDataLenRef.current = curLen;
-
-    if (curLen !== prevLen) {
-      const visibleCount = Math.floor(chartWidth / (candleWidthSV.value + candleSpacing));
-      const maxOff = Math.max(0, curLen - visibleCount + rightPaddingCandles);
-      scrollOffset.value = maxOff;
-    }
-  }, [data.length, chartWidth, candleSpacing, rightPaddingCandles, scrollOffset, candleWidthSV]);
+  const isDraggingRef = useRef<{ value: boolean } | null>(null);
 
   const fontFamily = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
   const font = useMemo(() => matchFont({ fontFamily, fontSize: 10 }), [fontFamily]);
@@ -185,7 +174,7 @@ export function KlineChart({
     };
   }, [bullishColor, bearishColor, backgroundColor, gridColor, textColor, crosshairColor, maColors]);
 
-  const gesture = useChartGestures({
+  const { gesture, isDragging } = useChartGestures({
     scrollOffset,
     candleWidth: candleWidthSV,
     crosshairX,
@@ -198,6 +187,26 @@ export function KlineChart({
     rightPaddingCandles,
     onCrosshairChange,
   });
+  isDraggingRef.current = isDragging;
+
+  useEffect(() => {
+    const prevLen = prevDataLenRef.current;
+    const curLen = data.length;
+    prevDataLenRef.current = curLen;
+
+    if (curLen !== prevLen && curLen > 0) {
+      if (isDraggingRef.current?.value) return;
+
+      const visibleCount = Math.floor(chartWidth / (candleWidthSV.value + candleSpacing));
+      const prevMaxOff = Math.max(0, prevLen - visibleCount + rightPaddingCandles);
+      const newMaxOff = Math.max(0, curLen - visibleCount + rightPaddingCandles);
+
+      const wasAtEnd = scrollOffset.value >= prevMaxOff - 1;
+      if (wasAtEnd) {
+        scrollOffset.value = newMaxOff;
+      }
+    }
+  }, [data.length, chartWidth, candleSpacing, rightPaddingCandles, scrollOffset, candleWidthSV]);
 
   const recorder = Skia.PictureRecorder();
 

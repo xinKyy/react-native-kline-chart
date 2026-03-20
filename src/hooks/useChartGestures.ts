@@ -135,5 +135,5 @@ export function useChartGestures(params: GestureParams) {
     pinchGesture,
   );
 
-  return composed;
+  return { gesture: composed, isDragging };
 }
